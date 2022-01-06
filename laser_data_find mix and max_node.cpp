@@ -59,7 +59,7 @@ ROS_ERROR("---------------------------");
   my_vector_1.push_back(9);
 for( ii = 0; ii < 5; ii++) {
        for( jj = 0; jj < 5; jj++) {
-           if( my_vector_1[ii] < my_vector_1[jj] ) {
+           if( my_vector_1[jj] > my_vector_1[ii] ) {
                temp = my_vector_1[ii];
                my_vector_1[ii] = my_vector_1[jj];
                my_vector_1[jj] = temp;
