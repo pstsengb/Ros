@@ -30,47 +30,51 @@ void MySub::cmdvelCb(const sensor_msgs::LaserScan::ConstPtr& msg)
   sensor_msgs::LaserScan abc = *msg;
   std::vector<double> my_vector_;
   std::vector<double> my_vector_1;
+  
+  int input_degree_L = -2;
+  int input_degree_R = 2;
+  int Resolution_L = input_degree_L*2;
+  int Resolution_R = input_degree_R*2;
+  int output_L = Resolution_L+200;
+  int output_R = Resolution_R+201;
 
-  for (int i=198;i<203;i++){
+  for (int i=output_L;i<output_R;i++){
     ROS_INFO("%.2f, %lu",abc.ranges[i], abc.ranges.size());
     my_vector_.push_back(abc.ranges[i]);
   }
   double m_min = my_vector_[0];
-for(int i=0;i<5;i++){
-  if(my_vector_[i]<m_min){
-    m_min = my_vector_[i]; 
+  for(int i=0;i<5;i++){
+    if(my_vector_[i]<m_min){
+      m_min = my_vector_[i]; 
+    }
   }
-}
   double m_max = my_vector_[0];
-for(int i=0;i<5;i++){
-  if(my_vector_[i]>m_max){
-    m_max = my_vector_[i]; 
+  for(int i=0;i<5;i++){
+    if(my_vector_[i]>m_max){
+      m_max = my_vector_[i]; 
+    }
   }
-}
-    ROS_WARN("min:%.2f", m_min);
-    ROS_WARN("max:%.2f", m_max);
-ROS_ERROR("---------------------------");
+  ROS_WARN("min:%.2f", m_min);
+  ROS_WARN("max:%.2f", m_max);
+  ROS_ERROR("---------------------------");
 
-  int ii,jj,temp = 0;
-  my_vector_1.push_back(1);
-  my_vector_1.push_back(7);
-  my_vector_1.push_back(2);
-  my_vector_1.push_back(5);
-  my_vector_1.push_back(9);
-for( ii = 0; ii < 5; ii++) {
-       for( jj = 0; jj < 5; jj++) {
-           if( my_vector_1[jj] > my_vector_1[ii] ) {
-               temp = my_vector_1[ii];
-               my_vector_1[ii] = my_vector_1[jj];
-               my_vector_1[jj] = temp;
-           }
-       }
-   }
+  double temp = 0.0;
+  my_vector_1.push_back(my_vector_[0]);
+  my_vector_1.push_back(my_vector_[1]);
+  my_vector_1.push_back(my_vector_[2]);
+  my_vector_1.push_back(my_vector_[3]);
+  my_vector_1.push_back(my_vector_[4]);
+  for( int ii = 0; ii < 5; ii++) {
+    for( int jj = 0; jj < 5-ii; jj++) {
+      if( my_vector_1[jj] > my_vector_1[ii] ) {
+        temp = my_vector_1[ii];
+        my_vector_1[ii] = my_vector_1[jj];
+        my_vector_1[jj] = temp;
+      }
+    }
+  }
 
   ROS_WARN("small->large:%.2f,%.2f,%.2f,%.2f,%.2f", my_vector_1[0],my_vector_1[1],my_vector_1[2],my_vector_1[3],my_vector_1[4]);
-
- 
-
 
   ROS_ERROR("---------------------------");
 
@@ -109,5 +113,6 @@ int main(int argc, char **argv)
 
   return 0;
 }
+
 
 
