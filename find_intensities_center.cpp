@@ -96,18 +96,22 @@ void MySub::cmdvelCb(const sensor_msgs::LaserScan::ConstPtr& msg)
   //my_vector_left[1] = left vector angle
   //my_vector_right[0] = right vector lenght
   //my_vector_right[1] = right vector angle
+  int positive_or_negative =1;
+
   for(int iii=0;iii<my_vector_.size();iii++){
     if (my_vector_2[iii]<500){
     my_vector_left.push_back(my_vector_1[max_count]);
     my_vector_left.push_back(my_vector_3[max_count]);
     my_vector_right.push_back(my_vector_1[min_count]);
     my_vector_right.push_back(my_vector_3[min_count]);
+    positive_or_negative =-1;
     }
     else{
     my_vector_left.push_back(my_vector_1[min_count]);
     my_vector_left.push_back(my_vector_3[min_count]);
     my_vector_right.push_back(my_vector_1[max_count]);
     my_vector_right.push_back(my_vector_3[max_count]);
+    positive_or_negative = 1;
     }
     
   }
@@ -120,10 +124,11 @@ void MySub::cmdvelCb(const sensor_msgs::LaserScan::ConstPtr& msg)
   double point1_length = my_vector_left[0];
   double point2_length = my_vector_right[0];
  // ROS_WARN("point1 length :%.2f,point2 length:%.2f,point1 angle :%.2f,point2 angle:%.2f", point1_length,point2_length,point1_angle,point2_angle);
+  
   double point1_x = point1_length * cos(point1_angle);
-  double point1_y = point1_length * sin(point1_angle);
+  double point1_y = positive_or_negative * point1_length * sin(point1_angle);
   double point2_x = point2_length * cos(point2_angle);
-  double point2_y = point2_length * sin(point2_angle);
+  double point2_y = positive_or_negative * point2_length * sin(point2_angle);
   point_center_x = (point1_x+point2_x)/2;
   point_center_y = (point1_y+point2_y)/2;
    ROS_WARN("point1 x :%.3f,point1 y:%.3f,point2 x :%.3f,point2 y:%.3f", point1_x,point1_y,point2_x,point2_y);
@@ -151,7 +156,7 @@ int main(int argc, char **argv)
   {
     ROS_WARN("%.3f", sub_obj.point_center_x);
     ROS_WARN("%.3f", sub_obj.point_center_y);
-    broadcaster.sendTransform(tf::StampedTransform(tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(sub_obj.point_center_x, -sub_obj.point_center_y, 0.0)),ros::Time::now(),"laser", "center"));
+    broadcaster.sendTransform(tf::StampedTransform(tf::Transform(tf::Quaternion(0, 0, 0, 1), tf::Vector3(sub_obj.point_center_x, sub_obj.point_center_y, 0.0)),ros::Time::now(),"laser", "center"));
     ros::spinOnce();
 
     loop_rate.sleep();
