@@ -21,7 +21,7 @@ class MySub{
         double point_center_x=0;
         double point_center_y=0;
         double center_angle=0;
-        nav_msgs::Odometry odom_lasercenter;
+        nav_msgs::Odometry odom_lasercenter_;
     private:
         ros::Subscriber sub_;
         ros::NodeHandle nh_;
@@ -142,7 +142,9 @@ void MySub::cmdvelCb(const sensor_msgs::LaserScan::ConstPtr& msg)
    //ROS_INFO("lengthhh :%.3f",lengthh);
    //ROS_ERROR("---------------------------");
    //atan2(point_center_y,point_center_x);
-  center_angle = atan2(point_center_y,point_center_x);
+
+
+  center_angle = atan2(point1_y-point2_y,point1_x-point2_x)+3.14159/2;
   tf::Quaternion q;
   q.setRPY(0, 0, center_angle);
   odom_lasercenter.pose.pose.orientation.x = q.x();
@@ -181,7 +183,7 @@ int main(int argc, char **argv)
     //ROS_INFO("orientation.y :%.2f",sub_obj.odom_lasercenter.pose.pose.orientation.y);
     //ROS_INFO("orientation.z :%.2f",sub_obj.odom_lasercenter.pose.pose.orientation.z);
     //ROS_INFO("orientation.w :%.2f",sub_obj.odom_lasercenter.pose.pose.orientation.w);
-    broadcaster.sendTransform(tf::StampedTransform(tf::Transform(tf::Quaternion(0, 0,sub_obj.odom_lasercenter.pose.pose.orientation.z, sub_obj.odom_lasercenter.pose.pose.orientation.w), tf::Vector3(sub_obj.point_center_x, sub_obj.point_center_y, 0.0)),ros::Time::now(),"laser", "center"));
+    broadcaster.sendTransform(tf::StampedTransform(tf::Transform(tf::Quaternion(sub_obj.odom_lasercenter.pose.pose.orientation.x,sub_obj.odom_lasercenter.pose.pose.orientation.y,sub_obj.odom_lasercenter.pose.pose.orientation.z, sub_obj.odom_lasercenter.pose.pose.orientation.w), tf::Vector3(sub_obj.point_center_x, sub_obj.point_center_y, 0.0)),ros::Time::now(),"laser", "center"));
     ros::spinOnce();
 
     loop_rate.sleep();
