@@ -1,3 +1,4 @@
+
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include "geometry_msgs/Twist.h"
@@ -91,6 +92,7 @@ int main(int argc, char **argv)
 
   while (ros::ok())
   {
+    ROS_INFO("   %.2f,    %.2f,    %.2f,   %.2f,    %.2f",sub_obj.abc.intensities[888],sub_obj.abc.intensities[950],sub_obj.abc.intensities[1000],sub_obj.abc.intensities[1050],sub_obj.abc.intensities[1110]);
     ROS_INFO("   %.2f,    %.2f,    %.2f,   %.2f,    %.2f",sub_obj.abc.ranges[888],sub_obj.abc.ranges[950],sub_obj.abc.ranges[1000],sub_obj.abc.ranges[1050],sub_obj.abc.ranges[1110]);
     ROS_INFO("laser :  %s",sub_obj.laserscan.c_str());
     ROS_INFO("baselink status : %s",fsm.c_str());
@@ -135,4 +137,6 @@ int main(int argc, char **argv)
   }
   return 0;
 }
+
+
 
