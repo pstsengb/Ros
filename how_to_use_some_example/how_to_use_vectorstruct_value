@@ -1,0 +1,25 @@
+    
+    
+    struct v_3p_t{
+        int index;
+        double x;
+        double y;
+        int parent_index;
+        double parent_x;
+        double parent_y;
+        int grand_parent_index;
+        double grand_parent_x;
+        double grand_parent_y;
+    };
+
+
+    std::vector<v_3p_t> v_shape_;
+    
+    
+    for(int i=0; i<v_shape_.size();i++){
+        ROS_WARN("value:%d", v_shape_[i].index);
+    }
+    
+    for(auto it=v_shape_.begin();it!=v_shape_.end();it++){
+        ROS_WARN("value:%d", it->index);
+    }
