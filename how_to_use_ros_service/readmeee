@@ -1,0 +1,7 @@
+1.put srv file parallel with src ,modify your asdf
+2.modify Cmake.list -> row 60~64  
+
+
+roscore
+rosservice list
+rosservice call xxxxx 按tab (會自動帶出你寫輸入的格式)
