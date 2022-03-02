@@ -1,0 +1,283 @@
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+#include "geometry_msgs/Twist.h"
+#include "nav_msgs/Odometry.h"
+#include "geometry_msgs/PoseArray.h"
+#include "tf/transform_broadcaster.h"
+#include "sensor_msgs/LaserScan.h"
+#include "tf/tf.h"
+#include <tf/transform_broadcaster.h>
+#include <math.h> 
+#include "geometry_msgs/PoseArray.h"
+
+class Mysystem{
+
+  struct vector_ {
+     double x;
+     double y;
+     double parent_x;
+     double parent_y;
+     double G;
+     double H;
+     double F;
+     double close;
+   };
+
+
+    public:
+        Mysystem(ros::NodeHandle in);
+        void Astart_Path(double A,double B,double C,double D);
+        std::vector<vector_> expan_;
+        std::vector<vector_> path_;
+        void pub_path();
+
+    private:
+        ros::NodeHandle n_;
+        ros::Publisher pub_;
+        ros::Publisher pub1_;
+        ros::Publisher pub2_;
+
+};
+
+Mysystem::Mysystem(ros::NodeHandle in){
+    n_ = in;
+    pub_ = n_.advertise<geometry_msgs::PoseArray>("Astar_path", 2);
+    pub1_ = n_.advertise<geometry_msgs::PoseArray>("origin", 2);
+    pub2_ = n_.advertise<geometry_msgs::PoseArray>("endpoint", 2);
+}
+void Mysystem::pub_path(){
+  geometry_msgs::PoseArray pose_array2_;
+  pose_array2_.header.frame_id = "map";
+  geometry_msgs::Pose m_pose_center2;
+  m_pose_center2.position.x = 0.0;
+  m_pose_center2.position.y = 0.0;
+  tf::Quaternion qq;
+  qq.setRPY(0, 0, 0+1.57);
+  m_pose_center2.orientation.x = qq.x() ;
+  m_pose_center2.orientation.y = qq.y() ;
+  m_pose_center2.orientation.z = qq.z() ;
+  m_pose_center2.orientation.w = qq.w() ;
+  pose_array2_.poses.push_back(m_pose_center2);
+  pub1_.publish(pose_array2_);
+
+
+
+  geometry_msgs::PoseArray pose_array3_;
+  pose_array3_.header.frame_id = "map";
+  double yaw =1.57;
+  geometry_msgs::Pose m_pose_center3;
+  m_pose_center3.position.x = path_[0].x;
+  m_pose_center3.position.y = path_[0].y;
+  tf::Quaternion qqq;
+  qqq.setRPY(0, 0, yaw);
+  m_pose_center3.orientation.x = qqq.x() ;
+  m_pose_center3.orientation.y = qqq.y() ;
+  m_pose_center3.orientation.z = qqq.z() ;
+  m_pose_center3.orientation.w = qqq.w() ;
+  pose_array3_.poses.push_back(m_pose_center3);
+  pub2_.publish(pose_array3_);
+
+  double cur_x = path_[0].x;
+  double cur_y = path_[0].y;
+
+  geometry_msgs::PoseArray pose_array_;
+  pose_array_.header.frame_id = "map";
+  for(int i =1 ;i<path_.size();i++){
+  geometry_msgs::Pose m_pose_center;
+  m_pose_center.position.x = path_[i].x;
+  m_pose_center.position.y = path_[i].y;
+  ROS_ERROR("%.1f,%.1f",path_[i].x,path_[i].y);
+  yaw = atan2(path_[i].y-cur_y,path_[i].x-cur_x)+3.14;
+  tf::Quaternion q;
+  q.setRPY(0, 0, yaw);
+  m_pose_center.orientation.x = q.x() ;
+  m_pose_center.orientation.y = q.y() ;
+  m_pose_center.orientation.z = q.z() ;
+  m_pose_center.orientation.w = q.w() ;
+  pose_array_.poses.push_back(m_pose_center);
+  cur_x = path_[i].x;
+  cur_y = path_[i].y;
+  }
+  pub_.publish(pose_array_);
+}
+
+
+void Mysystem::Astart_Path(double A,double B,double C,double D){
+  double start_x = A ;
+  double start_y = B ;
+  double end_x = C ;
+  double end_y = D ;
+
+  vector_ tmp_current;
+  tmp_current.x = start_x;
+  tmp_current.y = start_y;
+  tmp_current.parent_x = 0.0;
+  tmp_current.parent_y = 0.0;
+  tmp_current.G = 0.0;
+  tmp_current.H = 0.0;
+  tmp_current.F = 0.0;
+  tmp_current.close = 1.0;
+
+  for(int i=0;i<4;i++){
+    vector_ tmp_ob;
+    tmp_ob.x = 4.0;
+    tmp_ob.y = 1.0+i;
+    tmp_ob.parent_x = 0.0;
+    tmp_ob.parent_y = 0.0;
+    tmp_ob.G = 999999.0;
+    tmp_ob.H = 0.0;
+    tmp_ob.F = 9999999.0;
+    tmp_ob.close = 1.0;
+    expan_.push_back(tmp_ob);
+  }
+  
+
+  
+  
+  int all_close_is_1 = false;  
+  bool done = false;
+  while(!all_close_is_1){
+    //ROS_WARN("%.1f.%.1f",tmp_current.x,tmp_current.y);
+    for(int i =-1;i <2;i++){
+      for(int ii =-1;ii <2;ii++){
+        vector_ tmp_a;
+        tmp_a.x = tmp_current.x + i ;
+        tmp_a.y = tmp_current.y + ii ;
+        tmp_a.parent_x = tmp_current.x;
+        tmp_a.parent_y = tmp_current.y;
+        tmp_a.G = tmp_current.G + hypot(i,ii);
+        tmp_a.H = hypot(tmp_a.x - end_x,tmp_a.y - end_y);
+        tmp_a.F = tmp_a.G + tmp_a.H;
+        tmp_a.close = 0.0;
+        bool tmp_in_open = false;
+ 
+        for(int jj =0;jj<expan_.size();jj++){
+          if(tmp_a.x == expan_[jj].x && tmp_a.y == expan_[jj].y){
+            tmp_in_open = true;
+            break;
+          }
+        }
+
+        for(int j =0;j<expan_.size();j++){
+          if(tmp_a.x == expan_[j].x  && tmp_a.y == expan_[j].y){
+            if(expan_[j].close != 1.0){
+              if(tmp_a.G < expan_[j].G){
+                //ROS_ERROR("%.1f,%.1f",tmp_a.x,tmp_a.y);
+                tmp_a.parent_x = expan_[j].parent_x ;
+                tmp_a.parent_y = expan_[j].parent_y ;
+                tmp_a.G = expan_[j].G;
+                //ROS_ERROR("--");
+              }
+            }
+          }
+        }
+        if(!tmp_in_open){
+          expan_.push_back(tmp_a);
+        }   
+
+      }
+    }
+
+    for(int j =0;j<expan_.size();j++){
+      if(expan_[j].x == end_x && expan_[j].y == end_y && expan_[j].close ==1.0){
+        done = true;
+      }
+    }
+
+    int close_state_0 = false;
+    int close_state_1 = false;
+    
+    for(int j =0;j<expan_.size();j++){
+      if(expan_[j].close !=1.0){
+        close_state_0 = true;
+      }
+      else{
+        close_state_1 = true;
+      }
+    }
+    if(close_state_0 == 0 && close_state_1 ==1){
+      all_close_is_1 = true;
+    }
+    else{
+      all_close_is_1 = false;
+    }
+    ROS_WARN("all_close_is_addto1_:%d",all_close_is_1);
+  
+    ROS_WARN("end_node add to close_:%d",done);
+    if(done){
+      break;
+    }
+    double m_min = expan_[0].F;
+    int m_min_count ;
+    for(int i=0;i<expan_.size();i++){
+      if(expan_[i].close !=1.0){
+        if(expan_[i].F < m_min){
+          m_min = expan_[i].F; 
+          m_min_count = i ;      
+        }
+      }
+    }
+    expan_[m_min_count].close = 1.0;
+    tmp_current.x = expan_[m_min_count].x;
+    tmp_current.y = expan_[m_min_count].y;
+    tmp_current.G = expan_[m_min_count].G;
+    tmp_current.parent_x = expan_[m_min_count].parent_x;
+    tmp_current.parent_y = expan_[m_min_count].parent_y;
+  }
+
+  int count =0;
+  for(int i =0;i<expan_.size();i++){
+    ROS_INFO("x:%.1f,  y:%.1f,  G:%.1f,  H:%.1f,  F:%.1f,  close?:%.1f,  which:%d,  size:%lu,  P_x,y:%.f,%.f",expan_[i].x,expan_[i].y,expan_[i].G,expan_[i].H,expan_[i].F,expan_[i].close,count,expan_.size(),expan_[i].parent_x,expan_[i].parent_y);
+    count ++ ;
+  }
+  
+
+
+  vector_ endP;
+  endP.x = end_x;
+  endP.y = end_y;
+  path_.push_back(endP);
+ 
+  int find_start =false;
+  while(!find_start){
+    for(int i =0;i<expan_.size();i++){
+      if( endP.x == expan_[i].x && endP.y == expan_[i].y ){
+        endP.x = expan_[i].parent_x;
+        endP.y = expan_[i].parent_y;
+        path_.push_back(endP);
+        if(endP.x == start_x && endP.y == start_y){
+          find_start =true;
+          break;
+        }    
+      }
+    }
+  }
+ 
+
+  for(int i =0;i<path_.size();i++){
+    ROS_WARN("%.1f,%.1f",path_[i].x,path_[i].y);
+    }
+
+
+}
+
+
+
+
+int main(int argc, char **argv)
+{ 
+ ros::init(argc, argv, "test_node");
+ ros::NodeHandle n;
+ Mysystem drive(n);
+ drive.Astart_Path(2.0,2.0,5.0,5.0);
+ ros::Rate loop_rate(20);
+ while (ros::ok())  
+ {
+   drive.pub_path();
+   ros::spinOnce();
+   loop_rate.sleep();
+ }
+ return 0;
+}
+
+
