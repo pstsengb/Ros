@@ -102,49 +102,58 @@ void Mysystem::Astart_Path(){
 
   }
   */
+  
+  
+  
+  
+  ROS_INFO("--------------------------------------------------------------------------------------");
   std::set<int> a;
-  std::map<int, int> b;
-  std::priority_queue<std::pair<float, int>> c;
-  std::set<std::pair<int,float>> d;
-
   a.insert(9);
   a.insert(3);
   a.insert(2);
   a.insert(5);
   a.insert(1);
+  for(auto it=a.begin();it!=a.end();it++){
+    ROS_WARN("std::set(auto arrange small to big): %d",(*it));
+  }
+  ROS_INFO("--------------------------------------------------------------------------------------");
 
+  std::map<int, int> b;
   b[1] = 1;
   b[2] = 2;
   b[3] = 3;
   b[5] = 5;
 
-  for(auto it=a.begin();it!=a.end();it++){
-    ROS_ERROR("%d", (*it));
-  }
-
   for(auto it=b.begin();it!=b.end();it++){
-    ROS_WARN("%d", (*it).second);
+    ROS_WARN("std::map: %d,%d",(*it).first, (*it).second);
   }
+  ROS_INFO("--------------------------------------------------------------------------------------");
   
+  std::priority_queue<std::pair<float, int>> c;
   c.push(std::make_pair(-3.2, 1));
   c.push(std::make_pair(-4.2, 3));
   c.push(std::make_pair(-1.3, 4));
   c.push(std::make_pair(-6.3, 7));
   std::pair<float, int> mtmp = c.top();
   c.pop();
-  ROS_INFO("%f, %d", mtmp.first, mtmp.second);
-
+  ROS_WARN("std::priority_queue(arrange big to first): %.1f, %d", mtmp.first, mtmp.second);
   mtmp = c.top();
-  ROS_INFO("%f, %d", mtmp.first, mtmp.second);
+  ROS_WARN("std::priority_queue(arrange big to first): %.1f, %d", mtmp.first, mtmp.second);
+  ROS_INFO("--------------------------------------------------------------------------------------");
 
+
+
+  std::set<std::pair<int,float>> d;
   d.insert(std::make_pair(1, 2.2));
   d.insert(std::make_pair(4, 2.1));
   d.insert(std::make_pair(2, 3.1));
   d.insert(std::make_pair(5, 1.2));
   d.insert(std::make_pair(1, 2.2));
   for(auto it=d.begin();it!=d.end();it++){
-    ROS_WARN("--->%d, %.2f", (*it).first, (*it).second);
-}
+    ROS_WARN("use std:set && std:pair (std:set auto arrange small to first)--->%d, %.2f", (*it).first, (*it).second);
+  }
+  ROS_INFO("--------------------------------------------------------------------------------------");
+
 }
 
 int main(int argc, char **argv)
@@ -164,4 +173,5 @@ int main(int argc, char **argv)
  }
  return 0;
 }
+
 
