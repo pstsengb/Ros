@@ -1,0 +1,332 @@
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+#include "geometry_msgs/Twist.h"
+#include "nav_msgs/Odometry.h"
+#include "geometry_msgs/PoseArray.h"
+#include "tf/transform_broadcaster.h"
+#include "sensor_msgs/LaserScan.h"
+#include "tf/tf.h"
+#include <tf/transform_broadcaster.h>
+#include <math.h> 
+#include "geometry_msgs/PoseArray.h"
+#include <queue>
+
+class Mysystem{
+
+  struct vector_ {
+     int point;
+     int point_parent;
+     double G;
+     double H;
+     double F;
+     double close;
+   };
+
+
+    public:
+        Mysystem(ros::NodeHandle in);
+        void Astart_Path();
+        std::vector<vector_> expan_;
+        std::vector<vector_> tmp_;
+
+    private:
+        ros::NodeHandle n_;
+
+};
+
+Mysystem::Mysystem(ros::NodeHandle in){
+    n_ = in;
+
+}
+
+
+void Mysystem::Astart_Path(){
+  std::map<int, std::set<std::pair<int,float>>> vertex;
+
+
+  std::set<std::pair<int,float>> tmp_set;
+  tmp_set.insert(std::make_pair(3, 1.4));
+  tmp_set.insert(std::make_pair(4, 2.7));
+  vertex[1] = tmp_set;
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(3, 1.5));
+  vertex[2] = tmp_set;
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(1, 1.4));
+  tmp_set.insert(std::make_pair(2, 1.5));
+  tmp_set.insert(std::make_pair(7, 2.5));
+  vertex[3] = tmp_set;  
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(1, 2.7));
+  tmp_set.insert(std::make_pair(9, 1.6));
+  tmp_set.insert(std::make_pair(6, 3.5));
+  tmp_set.insert(std::make_pair(7, 0.8));
+  vertex[4] = tmp_set;  
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(3, 2.1));
+  tmp_set.insert(std::make_pair(6, 1.4));
+  vertex[5] = tmp_set;  
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(5, 1.4));
+  tmp_set.insert(std::make_pair(4, 3.5));
+  tmp_set.insert(std::make_pair(7, 0.3));
+  vertex[6] = tmp_set; 
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(6, 0.3));
+  tmp_set.insert(std::make_pair(3, 2.5));
+  tmp_set.insert(std::make_pair(4, 0.8));
+  tmp_set.insert(std::make_pair(8, 0.9));
+  vertex[7] = tmp_set; 
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(7, 0.9));
+  tmp_set.insert(std::make_pair(9, 1.1));
+  vertex[8]= tmp_set; 
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(4, 1.6));
+  tmp_set.insert(std::make_pair(8, 1.1));
+  vertex[9]= tmp_set; 
+  
+  //for(auto it=vertex.begin();it!=vertex.end();it++){
+    //ROS_ERROR("vertex[%d] set[] point[]",it->first,it->second );
+  //}
+
+  ROS_WARN("--------------------------------------------------------------------------------------");
+  for(auto iitt=vertex.begin();iitt!=vertex.end();iitt++){
+    std::set<std::pair<int,float>> successor = vertex[iitt->first];
+    for(auto it=successor.begin();it!=successor.end();it++){
+      ROS_ERROR(" point[%d] ->[%d]  distance(%.1f)",iitt->first,it->first,it->second );
+    }
+    ROS_INFO("------------------------");
+  }
+
+  ROS_WARN("--------------------------------------------------------------------------------------");
+
+  //for(auto it=vertex[1].begin();it!=vertex[1].end();it++){
+    //ROS_ERROR("point: %d  distance%.1f",it->first,it->second );
+    
+  //}
+
+
+  
+  int start_point = 1;
+  int goal_point = 2;
+
+  vector_ tmp_current;
+  tmp_current.point = start_point;
+  tmp_current.point_parent =0;
+  tmp_current.G = 0.0;
+  tmp_current.H = 0.0;
+  tmp_current.F = 0.0;
+  tmp_current.close = 1.0;
+  expan_.push_back(tmp_current);  
+
+
+  std::set<std::pair<float,std::pair<int,float>>> min_list;
+  std::set<std::pair<float,std::pair<int,float>>> frontier_list;
+  std::set<std::pair<int,int>> close_list;
+  
+  
+  
+
+
+  int all_close_is_1 = false;  
+  bool done = false;
+  while(!all_close_is_1){
+    std::set<std::pair<int,float>> successor = vertex[tmp_current.point];
+    for(auto it=successor.begin();it!=successor.end();it++){
+      vector_ tmp_a;
+      tmp_a.point = it->first;
+      tmp_a.point_parent = tmp_current.point;
+      tmp_a.G = tmp_current.G + it->second;
+      tmp_a.H = 0;
+      tmp_a.F = tmp_a.G + tmp_a.H;
+      tmp_a.close = 0.0;
+      bool tmp_in_close = false;
+      
+      for(auto it=expan_.begin();it!=expan_.end();it++){
+        if(tmp_a.point == it->point){
+           if(it->close ==1.0){
+              tmp_in_close = true;
+            break;
+           }
+        }
+      }
+      
+      for(int j =0;j<expan_.size();j++){
+          if(tmp_a.point == expan_[j].point){
+            if(expan_[j].close != 1.0){
+              if(tmp_a.G < expan_[j].G){
+                expan_[j].point_parent = tmp_a.point_parent;
+                expan_[j].G = tmp_a.G;
+                expan_[j].F = tmp_a.G+tmp_a.H;
+                tmp_in_close = true;
+                break;
+              }
+            }
+          }
+        }
+      
+      if(!tmp_in_close){
+        expan_.push_back(tmp_a);
+      }
+    }
+    for(int j =0;j<expan_.size();j++){
+      if(expan_[j].point == goal_point && expan_[j].close ==1.0){
+        done = true;
+      }
+    }
+    if(done){
+      ROS_ERROR("goal add to close");
+      break;
+    }
+    int close_state_0 = false;
+    int close_state_1 = false;
+    
+    for(int j =0;j<expan_.size();j++){
+      if(expan_[j].close !=1.0){
+        close_state_0 = true;
+      }
+      else{
+        close_state_1 = true;
+      }
+    }
+    if(close_state_0 == 0 && close_state_1 ==1){
+      all_close_is_1 = true;
+      ROS_INFO("all close is 1 true");
+    }
+    else{
+      all_close_is_1 = false;
+      ROS_INFO("all close is 1 false");
+    }
+    
+
+    vector_ tmp_use;
+    tmp_use.F = 999999.0;
+    tmp_.push_back(tmp_use);
+    double m_min = tmp_[0].F;
+    int m_min_count ;
+    for(int i=0;i<expan_.size();i++){
+      if(expan_[i].close != 1.0){
+        if(expan_[i].F < m_min){
+          m_min = expan_[i].F; 
+          m_min_count = i ;      
+        }
+      }
+    }
+    ROS_WARN("min:[%.1f],min_count[%d]",m_min,m_min_count);
+    expan_[m_min_count].close = 1.0;
+    tmp_current.point = expan_[m_min_count].point;
+    tmp_current.G = expan_[m_min_count].G;
+    tmp_current.point_parent = expan_[m_min_count].point_parent;
+    ROS_INFO("%d",tmp_current.point);
+    ROS_INFO("%.1f",tmp_current.G);
+    ROS_INFO("%d",tmp_current.point_parent);
+
+  }
+
+
+
+
+
+      
+
+
+  /*
+  ROS_ERROR("curnode[%d]",tmp_current.point );
+  for(auto it=close_list.begin();it!=close_list.end();it++){
+    ROS_WARN("close point(%d) close_point's parent[%d]",it->first, it->second);
+  }
+  for(auto it=min_list.begin();it!=min_list.end();it++){
+    ROS_WARN("finally : min_list_distance(%.1f) min_list_point[%d]",it->first, it->second);
+  }
+  */
+ 
+
+
+  int count =0;
+  for(auto it=expan_.begin();it!=expan_.end();it++){
+    ROS_WARN("point[%d], parent[%d], F(%.1f), G(%.1f), close(%.1f),count[%d]",it->point,it->point_parent,it->F,it->G,it->close,count);
+    count ++;
+  }
+  
+
+    //-->minimum f
+   // current_node_index = 3;
+
+  //}
+  
+  
+  
+  
+  
+  /*
+  ROS_INFO("--------------------------------------------------------------------------------------");
+  std::set<int> a;
+  a.insert(9);
+  a.insert(3);
+  a.insert(2);
+  a.insert(5);
+  a.insert(1);
+  for(auto it=a.begin();it!=a.end();it++){
+    ROS_WARN("std::set(auto arrange small to big): %d",(*it));
+  }
+  ROS_INFO("--------------------------------------------------------------------------------------");
+
+  std::map<int, int> b;
+  b[1] = 1;
+  b[2] = 2;
+  b[3] = 3;
+  b[5] = 5;
+
+  for(auto it=b.begin();it!=b.end();it++){
+    ROS_WARN("std::map: %d,%d",(*it).first, (*it).second);
+  }
+  ROS_INFO("--------------------------------------------------------------------------------------");
+  
+  std::priority_queue<std::pair<float, int>> c;
+  c.push(std::make_pair(-3.2, 1));
+  c.push(std::make_pair(-4.2, 3));
+  c.push(std::make_pair(-1.3, 4));
+  c.push(std::make_pair(-6.3, 7));
+  std::pair<float, int> mtmp = c.top();
+  c.pop();
+  ROS_WARN("std::priority_queue(arrange big to first): %.1f, %d", mtmp.first, mtmp.second);
+  mtmp = c.top();
+  ROS_WARN("std::priority_queue(arrange big to first): %.1f, %d", mtmp.first, mtmp.second);
+  ROS_INFO("--------------------------------------------------------------------------------------");
+
+
+
+  std::set<std::pair<int,float>> d;
+  d.insert(std::make_pair(1, 2.2));
+  d.insert(std::make_pair(4, 2.1));
+  d.insert(std::make_pair(2, 3.1));
+  d.insert(std::make_pair(5, 1.2));
+  d.insert(std::make_pair(1, 2.2));
+  for(auto it=d.begin();it!=d.end();it++){
+    ROS_WARN("use std:set && std:pair (std:set auto arrange small to first)---> %d, %.2f",(*it).first, (*it).second);
+  }
+  ROS_INFO("--------------------------------------------------------------------------------------");
+*/
+
+}
+
+int main(int argc, char **argv)
+{ 
+ ros::init(argc, argv, "test_node");
+ ros::NodeHandle n;
+ Mysystem drive(n);
+ 
+ drive.Astart_Path();
+ 
+ ros::Rate loop_rate(20);
+ 
+ while (ros::ok())  
+ {
+   ros::spinOnce();
+   loop_rate.sleep();
+ }
+ return 0;
+}
+
+
