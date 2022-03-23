@@ -1,0 +1,11 @@
+need action file ->put parallel with src file
+
+c-make list modify
+
+------------
+turn on roscore
+turn on action_server node
+
+use new terminal go to ws and source ->open spyder 
+python txt do 1~26 (main)
+next 28~32 (console)
