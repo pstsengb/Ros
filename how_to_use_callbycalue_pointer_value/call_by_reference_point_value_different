@@ -1,0 +1,11 @@
+ call by point
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_original_z_up_;
+    ttt(pcl::PointCloud<pcl::PointXYZ>::Ptr pc_original_z_up_)
+
+    call by reference
+    pcl::PointCloud<pcl::PointXYZ>:: pc_original_z_up_;
+    ttt(pcl::PointCloud<pcl::PointXYZ>::& pc_original_z_up_)
+    
+    call by value
+    pcl::PointCloud<pcl::PointXYZ>:: pc_original_z_up_;
+    ttt(pcl::PointCloud<pcl::PointXYZ>:: pc_original_z_up_)
