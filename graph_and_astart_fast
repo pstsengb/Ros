@@ -1,0 +1,298 @@
+#include "ros/ros.h"
+#include "std_msgs/String.h"
+#include "geometry_msgs/Twist.h"
+#include "nav_msgs/Odometry.h"
+#include "geometry_msgs/PoseArray.h"
+#include "tf/transform_broadcaster.h"
+#include "sensor_msgs/LaserScan.h"
+#include "tf/tf.h"
+#include <tf/transform_broadcaster.h>
+#include <math.h> 
+#include "geometry_msgs/PoseArray.h"
+#include <queue>
+#include <unordered_map>
+
+class Mysystem{
+
+  struct vector_close {
+    int point;
+    int point_parent;
+    int close;
+    int open;
+    double G;
+    double H;
+    double F;
+    friend bool operator<(const vector_close & x,const vector_close & y){
+    return x.F<y.F;
+    }
+  };
+
+   struct vector_cal {
+    int point;
+    int point_parent;
+    double G;
+    double H;
+    double F;
+    friend bool operator<(const vector_cal & x,const vector_cal & y){
+    return x.F<y.F; //which value you dont want to repeat
+    }
+  };
+ 
+    public:
+        Mysystem(ros::NodeHandle in);
+        void Astart_Path();
+        //std::set<std::pair<float,vector_cal>> open_; //new way for search F
+        std::set<std::pair<float,int>> new_open_; //use this as opne list
+    
+
+    private:
+        ros::NodeHandle n_;
+
+};
+
+Mysystem::Mysystem(ros::NodeHandle in){
+    n_ = in;
+
+}
+
+void Mysystem::Astart_Path(){
+  std::unordered_map<int, std::set<std::pair<int,float>>> vertex;
+
+  std::set<std::pair<int,float>> tmp_set;
+  tmp_set.insert(std::make_pair(3, 1.4));
+  tmp_set.insert(std::make_pair(4, 2.7));
+  vertex[1] = tmp_set;
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(3, 1.5));
+  vertex[2] = tmp_set;
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(1, 1.4));
+  tmp_set.insert(std::make_pair(2, 1.5));
+  tmp_set.insert(std::make_pair(7, 2.5));
+  vertex[3] = tmp_set;  
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(1, 2.7));
+  tmp_set.insert(std::make_pair(9, 1.6));
+  tmp_set.insert(std::make_pair(6, 3.5));
+  tmp_set.insert(std::make_pair(7, 0.8));
+  vertex[4] = tmp_set;  
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(3, 2.1));
+  tmp_set.insert(std::make_pair(6, 1.4));
+  vertex[5] = tmp_set;  
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(5, 1.4));
+  tmp_set.insert(std::make_pair(4, 3.5));
+  tmp_set.insert(std::make_pair(7, 0.3));
+  vertex[6] = tmp_set; 
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(6, 0.3));
+  tmp_set.insert(std::make_pair(3, 2.5));
+  tmp_set.insert(std::make_pair(4, 0.8));
+  tmp_set.insert(std::make_pair(8, 0.9));
+  vertex[7] = tmp_set; 
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(7, 0.9));
+  tmp_set.insert(std::make_pair(9, 1.1));
+  vertex[8]= tmp_set; 
+  tmp_set.clear();
+  tmp_set.insert(std::make_pair(4, 1.6));
+  tmp_set.insert(std::make_pair(8, 1.1));
+  vertex[9]= tmp_set; 
+
+  // copy vertex map full point to create close map,use to check all information
+  std::unordered_map<int, vector_close> close_map;
+  for(auto iitt=vertex.begin();iitt!=vertex.end();iitt++){
+    vector_close tmpadd;
+    tmpadd.point = 0;
+    tmpadd.point_parent = 0;
+    tmpadd.close =0 ;
+    tmpadd.open =0 ;
+    tmpadd.G =0.0;
+    tmpadd.H =0.0;
+    tmpadd.F=0.0;
+    close_map[iitt->first]=tmpadd;
+  }
+  /*
+  for(auto iitt=close_map.begin();iitt!=close_map.end();iitt++){
+    ROS_WARN("%d",iitt->first);
+    ROS_WARN("%d",iitt->second.point);
+    ROS_WARN("%d",iitt->second.point_parent);
+    ROS_WARN("%d",iitt->second.close);
+    ROS_WARN("%d",iitt->second.open);
+    ROS_WARN("%.2f",iitt->second.G);
+    ROS_WARN("%.2f",iitt->second.H);
+    ROS_WARN("%.2f",iitt->second.F);
+    ROS_WARN("--------------------");
+  }
+  */
+  /* 
+  vector_close tmpaddd = close_map[1];
+  ROS_WARN("%d",tmpaddd.point_parent);
+  ROS_WARN("%d",tmpaddd.close);
+  */
+  /*
+  //print map all point to can go point & disance (this map will from PCL-kdtree made)
+  ROS_WARN("--------------------------------------------------------------------------------------");
+  for(auto iitt=vertex.begin();iitt!=vertex.end();iitt++){
+    std::set<std::pair<int,float>> successor = vertex[iitt->first];
+    for(auto it=successor.begin();it!=successor.end();it++){
+      ROS_ERROR(" point[%d] ->[%d]  distance(%.1f)",iitt->first,it->first,it->second );
+    }
+    ROS_INFO("------------------------");
+  }
+  */
+
+  
+  int start_point = 1;
+  int goal_point = 8;
+  
+  vector_cal tmp_current;  //for expand use
+  tmp_current.point = start_point;
+  tmp_current.G = 0.0;
+  
+  vector_close tempclose; //add start point to close_map
+  tempclose.point =start_point ;
+  tempclose.close =1 ;
+  close_map[start_point] = tempclose;
+  
+
+
+  bool goal_find_or_not = false;
+  while(!goal_find_or_not){
+  //for(int i=0;i<8 ;i++){
+    std::set<std::pair<int,float>> successor = vertex[tmp_current.point]; 
+    for(auto it=successor.begin();it!=successor.end();it++){
+      vector_cal tmp_a;  
+      tmp_a.point = it->first;
+      tmp_a.point_parent = tmp_current.point;
+      tmp_a.G = tmp_current.G + it->second;
+      tmp_a.H = 0;
+      tmp_a.F = tmp_a.G + tmp_a.H;
+
+      //check cur expand point whether in close map,if yes,we dont want add to open_
+      bool tmp_a_in_close_map = false;
+      vector_close checktmp_a = close_map[tmp_a.point];
+      if(checktmp_a.close ==1){
+        tmp_a_in_close_map = true;
+      }
+      
+
+      //check cur point's G ,if bigger,we don't want , otherwise we erase cur open that point,because next step will add lower G value point to open list and update close map
+      vector_close checktmpa_open;
+      checktmpa_open = close_map[tmp_a.point];
+      if(checktmpa_open.open ==1){
+        if(tmp_a.G > checktmpa_open.G){
+          ROS_WARN("we don't need add  %d",tmp_a.point);
+          tmp_a_in_close_map = true;
+        }
+        else{
+          ROS_WARN("point need be replaced  %d",tmp_a.point);
+        new_open_.erase(std::make_pair(checktmpa_open.G, tmp_a.point));
+     
+        }
+        
+      }
+      
+      //add point to open list and update close map information
+      if(!tmp_a_in_close_map){
+        new_open_.insert(std::make_pair(tmp_a.F, tmp_a.point));
+        vector_close add_tmp_to_closemap_open;
+        add_tmp_to_closemap_open.point = tmp_a.point;
+        add_tmp_to_closemap_open.point_parent = tmp_a.point_parent;
+        add_tmp_to_closemap_open.close = 0;
+        add_tmp_to_closemap_open.open = 1;
+        add_tmp_to_closemap_open.G = tmp_a.G;
+        add_tmp_to_closemap_open.H = tmp_a.H;
+        add_tmp_to_closemap_open.F = tmp_a.F;
+        close_map[tmp_a.point] = add_tmp_to_closemap_open;
+      }
+      
+    }
+    
+   
+    //check goal whether add to close_map,if yes stop
+    vector_close checkgoal;
+    checkgoal = close_map[goal_point]; 
+    //ROS_ERROR("goal:%d",checkgoal.close);
+    if(checkgoal.close == 1){
+      goal_find_or_not = true;
+    }
+    if(goal_find_or_not){
+      ROS_ERROR("goal:[%d] add to close ",goal_point);
+      break;
+    }
+ 
+    if(new_open_.empty()){
+      ROS_ERROR("open-list nothing,break");
+    break;
+    }
+    
+    
+    //because open list mini F already at head,so directly take first container value as next time expand needs,also update close map 
+    for(auto it=new_open_.begin();it!=new_open_.end();){
+      vector_close tmptake;
+      tmptake = close_map[(*it).second]; 
+      tmp_current.G = tmptake.G;
+      tmp_current.point = (*it).second;
+      new_open_.erase(it);
+
+      vector_close tempclose;
+      tempclose.point = tmp_current.point;
+      tempclose.point_parent = tmptake.point_parent;
+      tempclose.close = 1;
+      tempclose.open = 0;
+      tempclose.G = tmptake.G;
+      tempclose.H = tmptake.H;
+      tempclose.F = tmptake.F;
+      close_map[tmp_current.point] = tempclose;
+      break;
+    }
+
+    ROS_INFO("current node:%d",tmp_current.point );
+    
+  
+  }
+  
+
+ 
+  
+
+  ROS_INFO("----------------------------------------------------");
+  for(auto it=new_open_.begin();it!=new_open_.end();it++){
+    ROS_ERROR("F:[%.2f] open_list_point:[%d]",(*it).first,(*it).second);
+  }
+   ROS_INFO("----------------------------------------------------");
+  for(auto iitt=close_map.begin();iitt!=close_map.end();iitt++){
+    ROS_WARN("point[%d],in-point[%d],parent[%d],close[%d],open[%d],F[%.2f],G[%.2f],H[%.2f]",iitt->first,iitt->second.point,iitt->second.point_parent,iitt->second.close,iitt->second.open,iitt->second.F,iitt->second.G,iitt->second.H);
+  }
+
+
+
+      
+     
+
+    
+
+}
+
+int main(int argc, char **argv)
+{ 
+ ros::init(argc, argv, "test_node11");
+ ros::NodeHandle n;
+ Mysystem drive(n);
+ 
+ drive.Astart_Path();
+ 
+ ros::Rate loop_rate(20);
+ 
+ while (ros::ok())  
+ {
+   ros::spinOnce();
+   loop_rate.sleep();
+ }
+ return 0;
+}
+
+
+
