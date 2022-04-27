@@ -1,0 +1,37 @@
+python 
+dictionary  == C++ map
+
+--example1--
+a = {}
+a.update({"a":10})
+a.update({"b":qqq})
+my_list=[1,2,3,4]
+a.update({"c":my_list})
+
+a["a"]
+=10
+a["b"]
+=qqq
+a["c"][2]
+=3
+
+
+--example2--
+
+return mean
+如果return 後面有東西 就會return value
+如果function 後面接  一個單純return 會直接跳掉這個function
+
+--example3--
+from geometry_msg import Pose
+import yaml  #轉成yaml 用來表達資料序列的格式
+import json  #格式壓成string
+a=Pose()
+y=yaml.load(str(a))
+result=json.dumps(y,indent=4)
+以上 pose資料已被壓成string
+
+以下 將string拆成dictionary
+c=json.loads(result)
+拿資料
+c['position']['x']
