@@ -1,0 +1,479 @@
+#include "ros/ros.h"
+#include "sensor_msgs/PointCloud2.h"
+
+/*For pcl::fromROSMsg*/
+#include <pcl_ros/point_cloud.h>
+/*For pcl::transformPointCloud*/
+#include <pcl_ros/transforms.h>
+
+/*For distance calculation*/
+#include <pcl/common/geometry.h>
+#include <math.h>
+
+/*kd-tree search*/
+#include <pcl/kdtree/kdtree_flann.h>
+
+#include <queue>
+#include "std_msgs/String.h"
+#include "geometry_msgs/Twist.h"
+#include "nav_msgs/Odometry.h"
+#include "geometry_msgs/PoseArray.h"
+#include "tf/transform_broadcaster.h"
+#include "sensor_msgs/LaserScan.h"
+#include <math.h> 
+#include "tf/tf.h"
+#include <tf/transform_broadcaster.h>
+#include "nav_msgs/Path.h"
+#include "geometry_msgs/PoseStamped.h"
+#include <unordered_map>
+#include <tf/transform_listener.h>
+#include "geometry_msgs/PointStamped.h"
+
+
+
+class Mysystem{
+
+    struct vector_close {
+    int point;
+    int point_parent;
+    int close;
+    int open;
+    double G;
+    double H;
+    double F;
+    friend bool operator<(const vector_close & x,const vector_close & y){
+    return x.F<y.F;
+    }
+  };
+
+   struct vector_cal {
+    int point;
+    int point_parent;
+    double G;
+    double H;
+    double F;
+    friend bool operator<(const vector_cal & x,const vector_cal & y){
+    return x.F<y.F; //which value you dont want to repeat
+    }
+  };
+
+    public:
+        Mysystem();
+        void Astart_Path( std::unordered_map<int, std::set<std::pair<int,float>>>& vertex,pcl::PointCloud<pcl::PointXYZ>::Ptr& pc_original_z_up_,int a,int b,std::vector<int>& path_);
+        //std::set<std::pair<float,vector_cal>> open_; //new way for search F
+        std::set<std::pair<float,int>> new_open_;
+        
+
+    private:
+
+};
+
+Mysystem::Mysystem(){
+
+}
+
+void Mysystem::Astart_Path( std::unordered_map<int, std::set<std::pair<int,float>>>& vertex,pcl::PointCloud<pcl::PointXYZ>::Ptr& pc_original_z_up_,int a,int b,std::vector<int>& path_){
+  //ROS_WARN("The size of ground is: %lu", pc_original_z_up_->points.size());
+  //ROS_WARN("x: %.2f, y: %.2f, z: %.2f", pc_original_z_up_->points[b].x, pc_original_z_up_->points[0].y, pc_original_z_up_->points[0].z);
+  ROS_WARN("A*------START");
+  path_.clear();
+
+  std::unordered_map<int, vector_close> close_map;
+  for(auto iitt=vertex.begin();iitt!=vertex.end();iitt++){
+    vector_close tmpadd;
+    tmpadd.point = 0;
+    tmpadd.point_parent = 0;
+    tmpadd.close =0 ;
+    tmpadd.open =0 ;
+    tmpadd.G =0.0;
+    tmpadd.H =0.0;
+    tmpadd.F=0.0;
+    close_map[iitt->first]=tmpadd;
+  }
+  ROS_WARN("close_map_size:%lu",close_map.size());
+  
+
+  int start_point = a;
+  int goal_point = b;
+  
+  vector_cal tmp_current;  //for expand use
+  tmp_current.point = start_point;
+  tmp_current.G = 0.0;
+  
+  vector_close tempclose; //add start point to close_map
+  tempclose.point =start_point ;
+  tempclose.close =1 ;
+  close_map[start_point] = tempclose;
+
+
+
+bool goal_find_or_not = false;
+  while(!goal_find_or_not){
+    std::set<std::pair<int,float>> successor = vertex[tmp_current.point]; 
+    for(auto it=successor.begin();it!=successor.end();it++){
+      vector_cal tmp_a;  
+      tmp_a.point = it->first;
+      tmp_a.point_parent = tmp_current.point;
+      tmp_a.G = tmp_current.G + it->second;
+      tmp_a.H = sqrt(((pc_original_z_up_->points[it->first].x - pc_original_z_up_->points[b].x)*(pc_original_z_up_->points[it->first].x - pc_original_z_up_->points[b].x))+((pc_original_z_up_->points[it->first].y - pc_original_z_up_->points[b].y)*(pc_original_z_up_->points[it->first].y - pc_original_z_up_->points[b].y))+((pc_original_z_up_->points[it->first].z - pc_original_z_up_->points[b].z)*(pc_original_z_up_->points[it->first].z - pc_original_z_up_->points[b].z)));
+      tmp_a.F = tmp_a.G + tmp_a.H;
+
+      //check cur expand point whether in close map,if yes,we dont want add to open_
+      bool tmp_a_in_close_map = false;
+      vector_close checktmp_a = close_map[tmp_a.point];
+      if(checktmp_a.close ==1){
+        tmp_a_in_close_map = true;
+      }
+      
+      vector_close checktmpa_open;
+      checktmpa_open = close_map[tmp_a.point];
+      if(checktmpa_open.open ==1){
+        if(tmp_a.G > checktmpa_open.G){
+          //ROS_WARN("we don't need add  %d",tmp_a.point);
+          tmp_a_in_close_map = true;
+        }
+        else{
+          //ROS_WARN("point need be replaced  %d",tmp_a.point);
+          new_open_.erase(std::make_pair(checktmpa_open.G, tmp_a.point));
+        }
+      }
+      
+      if(!tmp_a_in_close_map){
+        new_open_.insert(std::make_pair(tmp_a.F, tmp_a.point));
+        vector_close add_tmp_to_closemap_open;
+        add_tmp_to_closemap_open.point = tmp_a.point;
+        add_tmp_to_closemap_open.point_parent = tmp_a.point_parent;
+        add_tmp_to_closemap_open.close = 0;
+        add_tmp_to_closemap_open.open = 1;
+        add_tmp_to_closemap_open.G = tmp_a.G;
+        add_tmp_to_closemap_open.H = tmp_a.H;
+        add_tmp_to_closemap_open.F = tmp_a.F;
+        close_map[tmp_a.point] = add_tmp_to_closemap_open;
+      }
+    }
+    
+    //check goal whether add to close_map,if yes stop
+    vector_close checkgoal;
+    checkgoal = close_map[goal_point]; 
+    //ROS_ERROR("goal:%d",checkgoal.close);
+    if(checkgoal.close == 1){
+      goal_find_or_not = true;
+      ROS_ERROR("goal:[%d] add to close ",goal_point);
+      break;
+    }
+    
+    if(new_open_.empty()){
+      ROS_ERROR("open-list nothing,break");
+    break;
+    }
+ 
+    for(auto it=new_open_.begin();it!=new_open_.end();){
+      vector_close tmptake;
+      tmptake = close_map[(*it).second]; 
+      tmp_current.G = tmptake.G;
+      tmp_current.point = (*it).second;
+      new_open_.erase(it);
+
+      vector_close tempclose;
+      tempclose.point = tmp_current.point;
+      tempclose.point_parent = tmptake.point_parent;
+      tempclose.close = 1;
+      tempclose.open = 0;
+      tempclose.G = tmptake.G;
+      tempclose.H = tmptake.H;
+      tempclose.F = tmptake.F;
+      close_map[tmp_current.point] = tempclose;
+      break;
+    }
+
+  }
+
+
+  ROS_WARN("A*------DONE");
+  ROS_WARN("open size:%lu",new_open_.size());
+  ROS_WARN("close size:%lu",close_map.size());
+
+if(goal_find_or_not){
+  //cal path for pcl class to publish
+  int endP= goal_point;;
+  path_.push_back(endP);
+
+  int find_start =false;
+  while(!find_start){
+    vector_close goalpathuse = close_map[endP]; 
+    path_.push_back(goalpathuse.point_parent);
+    endP = goalpathuse.point_parent;
+    if(endP ==start_point){
+      find_start =true;
+      break;
+    }
+  }
+  int count =0;
+  for(auto it=path_.begin();it!=path_.end();it++){
+    ROS_WARN("point[%d],count[%d]",(*it),count);
+    count ++;
+  }
+}
+ 
+
+} 
+
+
+
+class pcl_test{
+
+
+  public:
+    pcl_test(ros::NodeHandle n);
+    void pub_path();
+    ros::Publisher pub_1;
+    
+
+  private:
+
+    void cbMapcloud(const sensor_msgs::PointCloud2::ConstPtr& msg);
+    void exampleFunction();
+    void graphpath();
+    int path_start_point_ = 0;
+    int path_start_end_ = 0;
+    std::vector<int> path_;
+
+    
+    ros::Subscriber pcl_ros_sub_;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_original_z_up_;
+    std::unordered_map<int, std::set<std::pair<int,float>>> vertex;
+
+
+    void tf_listener();
+    float tf_baselink_x = 0;
+    float tf_baselink_y = 0;
+    float tf_baselink_z = 0;
+    tf::TransformListener listener;
+
+    
+
+    void cbend(const geometry_msgs::PointStamped::ConstPtr& msg);
+    ros::Subscriber ros_sub_end_;
+    geometry_msgs::PointStamped point_stamped_msg;
+    void kdtree_search_end();
+    
+};
+
+pcl_test::pcl_test(ros::NodeHandle n){
+  
+  pcl_ros_sub_ = n.subscribe("mapground", 2, &pcl_test::cbMapcloud, this);
+  pub_1 = n.advertise<nav_msgs::Path>("control_path", 2);
+
+  ros_sub_end_ = n.subscribe("clicked_point", 2, &pcl_test::cbend, this);
+
+  /*initialize ptr*/
+  pc_original_z_up_ = pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>);
+
+  tf_listener();
+
+}
+
+void pcl_test::cbend(const geometry_msgs::PointStamped::ConstPtr& msg){
+  point_stamped_msg = *msg ;
+  ROS_INFO("%.2f",point_stamped_msg.point.x);
+  ROS_INFO("%.2f",point_stamped_msg.point.y);
+  ROS_INFO("%.2f",point_stamped_msg.point.z);
+  kdtree_search_end();
+  graphpath();
+
+
+}
+
+
+void pcl_test::kdtree_search_end(){
+  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree_end;
+  kdtree_end.setInputCloud (pc_original_z_up_);
+  int KK = 5;
+  std::vector<int> pointIdxKNNSearch_end(KK);
+  std::vector<float> pointKNNSquaredDistance_end(KK);
+  pcl::PointXYZ searchPoint_end;
+  searchPoint_end.x = point_stamped_msg.point.x;
+  searchPoint_end.y = point_stamped_msg.point.y;
+  searchPoint_end.z = point_stamped_msg.point.z;
+  if ( kdtree_end.nearestKSearch (searchPoint_end, KK, pointIdxKNNSearch_end, pointKNNSquaredDistance_end) > 0 ){
+    for(auto i=pointIdxKNNSearch_end.begin();i!=pointIdxKNNSearch_end.end();i++){
+      path_start_end_ = (*i);
+      ROS_INFO("Index: %d", (*i));
+      break;
+    }
+  }
+
+
+}
+
+void pcl_test::cbMapcloud(const sensor_msgs::PointCloud2::ConstPtr& msg)
+{
+  
+  pcl::fromROSMsg(*msg, *pc_original_z_up_);
+  exampleFunction();
+  //graphpath();
+}
+
+void pcl_test::tf_listener(){
+
+  //geometry_msgs::TransformStamped ros_trans_map2base_;
+  
+    while (ros::ok()){  
+      tf::StampedTransform transform;
+      try{
+        listener.waitForTransform("map", "base_link", ros::Time(0), ros::Duration(10.0) );
+        listener.lookupTransform("map", "base_link",  
+                                  ros::Time(0), transform);
+        ROS_INFO("Got TF:x[%.2f]y[%.2f]z[%.2f]",transform.getOrigin().x(),transform.getOrigin().y(),transform.getOrigin().z());
+        tf_baselink_x =transform.getOrigin().x();
+        tf_baselink_y =transform.getOrigin().y();
+        tf_baselink_z =transform.getOrigin().z();
+        break;
+      }
+      catch (tf::TransformException ex) {
+        ROS_WARN("%s",ex.what());
+        ros::Duration(1.0).sleep();
+        continue;
+      }
+    }
+}
+
+void pcl_test::pub_path(){
+  nav_msgs::Path m_path;
+  m_path.header.frame_id = "map";
+  if(path_.size()>0 && pc_original_z_up_->points.size()>0){
+    for(auto it=path_.begin();it!=path_.end();it++){
+      geometry_msgs::PoseStamped a_pose;
+      a_pose.pose.position.x = pc_original_z_up_->points[(*it)].x;
+      a_pose.pose.position.y = pc_original_z_up_->points[(*it)].y;
+      a_pose.pose.position.z = pc_original_z_up_->points[(*it)].z;
+      m_path.poses.push_back(a_pose);
+    }
+  }
+  pub_1.publish(m_path);
+}
+
+void pcl_test::graphpath(){
+  std::shared_ptr<Mysystem> Mysystem_ptr_;
+  Mysystem_ptr_ = std::make_shared<Mysystem>();
+  Mysystem_ptr_->Astart_Path(vertex,pc_original_z_up_,path_start_point_,path_start_end_,path_);
+}
+
+void pcl_test::exampleFunction(){
+
+  ROS_WARN("The size of ground is: %lu", pc_original_z_up_->points.size());
+  /*Print coordinate of the first point*/
+  ROS_WARN("x: %.2f, y: %.2f, z: %.2f", pc_original_z_up_->points[0].x, pc_original_z_up_->points[0].y, pc_original_z_up_->points[0].z);
+  
+  
+  /*kd-tree search example*/
+  //pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+  //kdtree.setInputCloud (pc_original_z_up_);
+
+  
+  //create cloud map by using map vertex
+  ROS_WARN("KD-tree START");
+  pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+  kdtree.setInputCloud (pc_original_z_up_);
+  std::vector<int> pointIdxRadiusSearch;
+  std::vector<float> pointRadiusSquaredDistance;
+  float radius = 0.4;
+
+  std::set<std::pair<int,float>> tmp_set;
+  int count =0;
+  pcl::PointXYZ searchPoint;
+
+  for(auto it=pc_original_z_up_->points.begin();it!=pc_original_z_up_->points.end();it++){
+    searchPoint.x = it->x;
+    searchPoint.y = it->y;
+    searchPoint.z = it->z;
+    kdtree.radiusSearch (searchPoint, radius, pointIdxRadiusSearch, pointRadiusSquaredDistance);
+    for(auto i=pointIdxRadiusSearch.begin();i!=pointIdxRadiusSearch.end();i++){
+      if(count != (*i)){
+        float distance = sqrt(((it->x - pc_original_z_up_->points[(*i)].x)*(it->x - pc_original_z_up_->points[(*i)].x))+((it->y - pc_original_z_up_->points[(*i)].y)*(it->y - pc_original_z_up_->points[(*i)].y))+((it->z - pc_original_z_up_->points[(*i)].z)*(it->z - pc_original_z_up_->points[(*i)].z))); 
+        tmp_set.insert(std::make_pair((*i), distance));
+      }
+    }
+    vertex[count] = tmp_set;
+    tmp_set.clear();
+    count++;
+  }
+  ROS_ERROR("KD-tree DONE");
+
+
+
+  int K = 5;
+  std::vector<int> pointIdxKNNSearch(K);
+  std::vector<float> pointKNNSquaredDistance(K);
+  //pcl::PointXYZ searchPoint;
+  searchPoint.x = tf_baselink_x;
+  searchPoint.y = tf_baselink_y;
+  searchPoint.z = tf_baselink_z;
+  if ( kdtree.nearestKSearch (searchPoint, K, pointIdxKNNSearch, pointKNNSquaredDistance) > 0 ){
+    for(auto i=pointIdxKNNSearch.begin();i!=pointIdxKNNSearch.end();i++){
+      path_start_point_ = (*i);
+      ROS_INFO("Index: %d", (*i));
+      break;
+    }
+  }
+
+
+
+ 
+  
+
+
+/*
+  for(auto iitt=vertex.begin();iitt!=vertex.end();iitt++){
+    std::set<std::pair<int,float>> successor = vertex[iitt->first];
+    for(auto iit=successor.begin();iit!=successor.end();iit++){
+      ROS_ERROR(" point[%d] ->[%d]  distance(%.2f)",iitt->first,iit->first,iit->second );
+    }
+    ROS_INFO("------------------------");
+  }
+*/
+
+/*
+  if ( kdtree.radiusSearch (searchPoint, radius, pointIdxRadiusSearch, pointRadiusSquaredDistance) > 0 )
+  {
+    for(auto i=pointIdxRadiusSearch.begin();i!=pointIdxRadiusSearch.end();i++){
+      ROS_INFO("Index: %d, x: %.2f, y: %.2f, z: %.2f", (*i), pc_original_z_up_->points[(*i)].x, pc_original_z_up_->points[(*i)].y, pc_original_z_up_->points[(*i)].z);
+      ROS_WARN("%d",pointIdxRadiusSearch.size());
+    }
+  }
+  */
+ /*
+ if ( kdtree.nearestKSearch (searchPoint, K, pointIdxKNNSearch, pointKNNSquaredDistance) > 0 ){
+    for(auto i=pointIdxKNNSearch.begin();i!=pointIdxKNNSearch.end();i++){
+      ROS_INFO("Index: %d, x: %.2f, y: %.2f, z: %.2f", (*i), pc_original_z_up_->points[(*i)].x, pc_original_z_up_->points[(*i)].y, pc_original_z_up_->points[(*i)].z);
+    }
+    ROS_WARN("----------------------------------------");
+  }
+  */
+
+}
+
+
+int main(int argc, char **argv)
+{
+ 
+  ros::init(argc, argv, "pcl_test_node");
+
+  ros::NodeHandle n,pn("~");
+  
+  pcl_test aaa(n);
+
+  ros::Rate loop_rate(20);
+
+  while (ros::ok())  
+  {
+    aaa.pub_path();
+    ros::spinOnce();
+    loop_rate.sleep();
+  }
+ 
+ 
+  return 0;
+  
+}
+
