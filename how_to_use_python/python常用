@@ -35,3 +35,15 @@ result=json.dumps(y,indent=4)
 c=json.loads(result)
 拿資料
 c['position']['x']
+
+
+--example3--
+def ABC():
+    a =1
+    b =2
+    c =3
+    return a,b,c
+
+aa,bb,cc = ABC()
+
+aa,bb,_ = ABC()
