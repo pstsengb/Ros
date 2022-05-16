@@ -47,3 +47,7 @@ def ABC():
 aa,bb,cc = ABC()
 
 aa,bb,_ = ABC()
+
+--example4--
+for i in range(3,6,1):
+3開始 5結束 遞增1
