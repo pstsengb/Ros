@@ -1,0 +1,8 @@
+
+
+1.how to git clone by using token(like a key can git clone private repository)
+example:
+	xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx = token key
+	git clone https://xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx@github.com/pstsengb/Rlab_server_fsm.git
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------v
