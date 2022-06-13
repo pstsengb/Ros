@@ -60,10 +60,12 @@ use  self.variable valuse
 
 --example6--
 for using 
-
+//////////////////////////////////////////////////////////////////
 a={} # a=({0,aaa})
-
 for i in a
 	rospy.loginfo(a[i]) #will show aaa ,but a={} first need be int
-	
 
+///////////////////////////////////////////////////////////////
+b={} # b=({'ccc',999})	
+for i in b
+	rospy.loginfo(b[i]) #will work,will show 999

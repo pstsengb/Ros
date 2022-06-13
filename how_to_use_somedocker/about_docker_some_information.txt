@@ -1,0 +1,2 @@
+if in container catkin_make then build devel and build (which is root,mean highest authority)
+need use sudo rm -rf to delete

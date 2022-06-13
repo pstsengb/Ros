@@ -6,11 +6,15 @@ when 2 file in your computer
 1.go to main src ,type as below (type same name with submodule repository name,and type you want to join git )
   git submodule add git@github.com:pstsengb/submodule_test.git submodule_test
 
+
 2.go to main(check if .git is there,use ll) do git add/commit/push
 
 
-3.when modify submodule inside data,cd to that submodule file do git add/commit/push   (at that file type ll,check if .git,which means you reach this floor)
+3.when modify submodule inside data,cd to that submodule file do (at that file type ll,check if .git,which means you reach this floor)
+  git add/commit
+  git push origin HEAD:main
   at this time your only update your submodule repository
+
 
 4.when you need update main repository 
   cd to main repository (check if .git is there,type ll)
@@ -19,6 +23,8 @@ when 2 file in your computer
   git add/commit/push
   at this time your main repository will update too
 
+
 5.when you git clone new repository with submodule, first need type as below (if you do not add that command ,you can't see submodule)
-git clone --recurse-submodules git@github.com:pstsengb/simulation_2d.git
+  git clone --recurse-submodules git@github.com:pstsengb/simulation_2d.git
+  
 

@@ -1,0 +1,7 @@
+how to add gitigone
+at file ,type ll  ,check if .gitignore
+add
+/devel
+/build
+*.catkin_workspace
+.bag

@@ -1,0 +1,30 @@
+first step
+1.buy realsense
+2.go to intel realsense ros repo
+3.download and roslaunch realsense2_camera rs_camera.launch
+
+second step
+in order to use tag to know about its distance
+1.need apriltag ros repo (create new ws)
+2.before catkin_make apriltag ros repo ,we also need AprilTag library, or we will catkin_make fail
+3.so go to download AprilTag library (put anywhere,after make install ,which can delete),mkdir name "build" folder
+4.cd to build ,and cmake .. (which will check if all request ,which you must have)
+5.if above ok,sudo make install
+6.library complie file ,will name .so (which like ubuntu class)
+
+third step
+1.go apriltag ros ws
+2.source devel/setup.bash
+3.before roslaunch ,we need modify orginal continuous_detection.launch
+
+  row 4,5 modify as below,because the class input topic is '/camera/color/image_raw' & '/camera/color/camera_info'
+  arg name is variable in that script,rear replace front
+  <arg name="camera_name" default="/camera/color" />
+  <arg name="image_topic" default="image_raw" />
+
+4.go to config ->tags.yaml
+  
+  copy row 19 to row 24 ,which means tell the apriltag real world tag size, which can inverse calculate the distance to user
+
+5.roslaunch apriltag_ros continuous_detection.launch
+
